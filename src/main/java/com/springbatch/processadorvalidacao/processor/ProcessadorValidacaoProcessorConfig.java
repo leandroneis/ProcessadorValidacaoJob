@@ -1,6 +1,8 @@
 package com.springbatch.processadorvalidacao.processor;
 
 import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.item.support.CompositeItemProcessor;
+import org.springframework.batch.item.support.builder.CompositeItemProcessorBuilder;
 import org.springframework.batch.item.validator.BeanValidatingItemProcessor;
 import org.springframework.batch.item.validator.ValidatingItemProcessor;
 import org.springframework.batch.item.validator.ValidationException;
@@ -20,12 +22,23 @@ public class ProcessadorValidacaoProcessorConfig {
 
 
     @Bean
-    public ItemProcessor<Cliente, Cliente> procesadorValidacaoProcessor() {
-//		BeanValidatingItemProcessor<Cliente> processor = new BeanValidatingItemProcessor<>();
-//		processor.setFilter(true);
+    public ItemProcessor<Cliente, Cliente> procesadorValidacaoProcessor() throws Exception {
+        return new CompositeItemProcessorBuilder<Cliente, Cliente>()
+                .delegates(beanValidationProcessor(), emailValidatingProcessor())
+                .build();
+    }
+
+    private BeanValidatingItemProcessor<Cliente> beanValidationProcessor() throws Exception {
+        BeanValidatingItemProcessor<Cliente> processor = new BeanValidatingItemProcessor<>();
+        processor.setFilter(true);
+        processor.afterPropertiesSet();
+        return processor;
+    }
+
+    private ValidatingItemProcessor<Cliente> emailValidatingProcessor() {
         ValidatingItemProcessor<Cliente> processor = new ValidatingItemProcessor<>();
         processor.setValidator(validator());
-		processor.setFilter(true);
+        processor.setFilter(true);
         return processor;
     }
 
@@ -35,7 +48,7 @@ public class ProcessadorValidacaoProcessorConfig {
             public void validate(Cliente cliente) throws ValidationException {
                 if (emails.contains(cliente.getEmail()))
                     throw new ValidationException(String.format("O cliente %s já foi processado!", cliente.getEmail()));
-				emails.add(cliente.getEmail());
+                emails.add(cliente.getEmail());
             }
         };
     }
